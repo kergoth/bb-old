@@ -20,11 +20,11 @@ General
 Code
 ----
 
+- Restructure commands, move them out of 'bb'
+- Move bb.main into the python package
 - Avoid use of `build_targets`, so commands like showdepends work against any
   target, not just `build_targets` (e.g. bb showdepends virtual/libc should
   work)
-- Restructure commands, move them out of 'bb'
-- Move bb.main into the python package
 
 Long term
 ---------
@@ -33,6 +33,18 @@ Long term
 
 Considering
 -----------
+
+- target vs pn arguments. In some cases, the user may be expecting that their
+  input be interpreted more directly, as a recipe name, rather than as
+  a target. For example, it could be unintuitive that 'bb showprovides eglibc'
+  when using an external toolchain may actually show the provides of the
+  external-sourcery-toolchain recipe.
+
+    - For each command, determine which is most appropriate as a default
+    - Consider adding an argument to change how the primary argument is
+      interpreted
+    - Add messages, possibly verbose/debug ones, which indicate how the input
+      is mapped to an actual recipe file, or what recipe file is being used
 
 - Wildcards for `show` via fnmatch
 - Shift bitbake-layers into a subcommand
