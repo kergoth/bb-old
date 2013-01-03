@@ -159,6 +159,20 @@ class BitBakeCommands(Commands):
             print(taskdata.build_names_index[dep])
 
     @arg('target')
+    def do_showprovides(self, args):
+        """Show what the specified target provides"""
+
+        # Silence messages about missing/unbuildable, as we don't care
+        bb.taskdata.logger.setLevel(logging.CRITICAL)
+
+        tinfoil = bbtool.tinfoil.Tinfoil(output=sys.stderr)
+        tinfoil.prepare()
+
+        data = bbtool.show.get_data(tinfoil, args.target)
+        for provide in sorted(data.getVar('PROVIDES', True).split()):
+            print(provide)
+
+    @arg('target')
     def do_whatprovides(self, args):
         """Show what recipes provide the specified target"""
 
