@@ -61,10 +61,10 @@ def escape_shell_value(value):
 def format_variable(data, variable, flag=None, shell=False):
     if flag:
         unexpanded = data.getVarFlag(variable, flag, False)
-        pattern = '%s[%s]="%%s"' % (variable, flag)
+        pattern = '%s[%s]=%%s' % (variable, flag)
     else:
         unexpanded = data.getVar(variable, False)
-        pattern = '%s="%%s"' % variable
+        pattern = '%s=%%s' % variable
 
     if data.getVarFlag(variable, 'unexport'):
         if flag:
@@ -87,6 +87,11 @@ def format_variable(data, variable, flag=None, shell=False):
 
         if data.getVarFlag(variable, 'export'):
             message += 'export '
+
+        if isinstance(expanded, basestring):
+            expanded = '"%s"' % expanded
+        else:
+            expanded = repr(expanded)
         message += pattern % expanded
         return message
 
