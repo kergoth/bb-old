@@ -128,6 +128,7 @@ class BitBakeCommands(Commands):
         """Show what depends on the specified target"""
 
         providers = list(args.recipes)
+        providers.append(args.target)
         tinfoil, taskdata = prepare_taskdata(providers)
 
         targetid = taskdata.getbuild_id(args.target)
