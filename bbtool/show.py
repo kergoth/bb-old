@@ -57,7 +57,7 @@ def escape_shell_value(value):
     return value
 
 
-def format_variable(data, variable, flag=None, shell=False):
+def format_variable(data, variable, flag=None, shell=False, expand=True):
     if flag:
         unexpanded = data.getVarFlag(variable, flag, False)
         pattern = '%s[%s]=%%s' % (variable, flag)
@@ -65,11 +65,14 @@ def format_variable(data, variable, flag=None, shell=False):
         unexpanded = data.getVar(variable, False)
         pattern = '%s=%%s' % variable
 
-    if data.getVarFlag(variable, 'unexport'):
+    if data.getVarFlag(variable, 'unexport') or not expand:
         if flag:
             return pattern % unexpanded
         else:
-            return '# ' + pattern % unexpanded
+            if not expand:
+                return pattern % unexpanded
+            else:
+                return '# ' + pattern % unexpanded
 
     try:
         expanded = bb.data.expand(unexpanded, data)
@@ -96,7 +99,7 @@ def format_variable(data, variable, flag=None, shell=False):
 
 
 ignored_flags = ('func', 'python', 'export', 'export_func')
-def print_variable_flags(data, variable):
+def print_variable_flags(data, variable, expand=True):
     flags = data.getVarFlags(variable)
     if not flags:
         return
@@ -105,23 +108,18 @@ def print_variable_flags(data, variable):
         if flag.startswith('_') or flag in ignored_flags:
             continue
         value = str(value)
-        print(format_variable(data, variable, flag))
+        print(format_variable(data, variable, flag, expand))
 
 
-def print_variable(data, variable):
+def print_variable(data, variable, expand=True):
     unexpanded = data.getVar(variable, False)
     if unexpanded is None:
         return
     unexpanded = str(unexpanded)
 
-
     flags = data.getVarFlags(variable) or {}
     if flags.get('func'):
-        try:
-            value = bb.data.expand(unexpanded, data)
-        except BaseException:
-            logger.exception("Expansion of '%s' failed", variable)
-            return
+        value = unexpanded
 
         if flags.get('python'):
             # TODO: fix bitbake to show methodpool functions sanely like this
@@ -130,9 +128,16 @@ def print_variable(data, variable):
             else:
                 print("python %s () {\n%s}\n" % (variable, value))
         else:
+            if expand:
+                try:
+                    value = bb.data.expand(unexpanded, data)
+                except BaseException:
+                    logger.exception("Expansion of '%s' failed", variable)
+                    return
+
             print("%s () {\n%s}\n" % (variable, value))
     else:
-        print(format_variable(data, variable, shell=True))
+        print(format_variable(data, variable, shell=True, expand=expand))
 
 
 def variable_function_deps(data, variable, deps, seen):
@@ -150,10 +155,9 @@ def variable_function_deps(data, variable, deps, seen):
             continue
         seen.add(dep)
 
-        if data.getVarFlag(dep, 'func'):
-            for _dep in variable_function_deps(data, dep, deps, seen):
-                yield _dep
-            yield dep
+        for _dep in variable_function_deps(data, dep, deps, seen):
+            yield _dep
+        yield dep
 
 def dep_ordered_variables(data, variables, deps):
     seen = set()
@@ -166,7 +170,7 @@ def dep_ordered_variables(data, variables, deps):
             yield dep
         yield variable
 
-def sorted_variables(data, variables=None, show_deps=True):
+def sorted_variables(data, variables=None, show_deps=True, dep_filter=None):
     def key(v):
         # Order: unexported vars, exported vars, shell funcs, python funcs
         if data.getVarFlag(v, 'func'):
@@ -186,6 +190,9 @@ def sorted_variables(data, variables=None, show_deps=True):
         if show_deps:
             deps = bb.data.generate_dependencies(data)[1]
             variables = list(dep_ordered_variables(data, variables, deps))
+            if dep_filter is None:
+                dep_filter = lambda d: data.getVarFlag(d, 'func')
+            variables = filter(dep_filter, variables)
 
     variables = sorted(variables, key=key)
     return variables
@@ -218,8 +225,13 @@ def show(args):
     else:
         data = get_data(tinfoil)
 
-    variables = sorted_variables(data, args.variables, args.dependencies)
+    if args.unexpanded:
+        variables = sorted_variables(data, args.variables, args.dependencies,
+                                     dep_filter=lambda dep: True)
+    else:
+        variables = sorted_variables(data, args.variables, args.dependencies)
+
     for variable in variables:
-        print_variable(data, variable)
+        print_variable(data, variable, expand=not args.unexpanded)
         if args.flags:
-            print_variable_flags(data, variable)
+            print_variable_flags(data, variable, expand=not args.unexpanded)

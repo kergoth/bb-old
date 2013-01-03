@@ -113,7 +113,8 @@ class BitBakeCommands(Commands):
 
     logger = logging.getLogger('bb')
 
-    @arg('-d', '--dependencies', action='store_true', help='also show functions the vars depend on')
+    @arg('-d', '--dependencies', action='store_true', help='follow variable dependencies (functions only, if showing expanded)')
+    @arg('-u', '--unexpanded', action='store_true', help="don't expand variables")
     @arg('-f', '--flags', action='store_true', help='also show flags')
     @arg('-r', '--recipe', help='operate against this recipe')
     @arg('variables', nargs='*', help='variables to show (default: all variables)')
