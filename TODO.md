@@ -12,6 +12,11 @@ General
     - variables with defined variable types ('type' flag)
     - variables with default values (??=, aka 'defaultval' flag)
 
+- Add interactive mode
+
+    - single up-front recipe parse step
+    - add reparse subcommand
+
 Code
 ----
 
