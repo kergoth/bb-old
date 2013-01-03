@@ -18,6 +18,16 @@ Known Issues
 Some Examples
 -------------
 
+    # Determine what pulls ncurses into a build of core-image-minimal
+    $ bb whatdepends ncurses core-image-minimal
+    Parsing recipes..done.
+    virtual/gettext
+    virtual/libintl
+    readline
+    util-linux
+    sqlite3
+    attr
+
     $ bb showdepends bash
     Parsing recipes..done.
     autoconf-native
