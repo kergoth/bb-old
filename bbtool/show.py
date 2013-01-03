@@ -139,6 +139,7 @@ def variable_function_deps(data, variable, deps, seen):
         parser = bb.codeparser.PythonParser(variable, logger)
         parser.parse_python(data.getVar(variable, False))
         variable_deps |= parser.execs
+        deps[variable] = variable_deps
 
     for dep in variable_deps:
         if dep in seen:
