@@ -52,8 +52,9 @@ Some Examples
     ncurses
     bison-native
 
-    $ bb whatrprovides busybox-syslog
-    /scratch/mel7/bb/poky/meta/recipes-core/busybox/busybox_1.20.2.bb*
+    $ bb whatrprovides update-alternatives
+    /scratch/mel7/bb/poky/meta/recipes-devtools/opkg/opkg_svn.bb*
+    /scratch/mel7/bb/poky/meta/recipes-devtools/dpkg/dpkg_1.16.9.bb
 
     $ bb show -r bash FILE
     Parsing recipes..done.
