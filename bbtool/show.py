@@ -89,7 +89,7 @@ def format_variable(data, variable, flag=None, shell=False):
             message += 'export '
 
         if isinstance(expanded, basestring):
-            expanded = '"%s"' % expanded
+            expanded = '"%s"' % escape_shell_value(expanded)
         else:
             expanded = repr(expanded)
         message += pattern % expanded
