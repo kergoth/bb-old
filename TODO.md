@@ -1,16 +1,31 @@
 General
 -------
 
-- Show all types of dependency, not just `DEPENDS`, in 'showdepends' and
-  'whatdepends'
-- Add a subcommand which emits information about all dependencies, indirect
-  and direct, runtime and build time, in both directions for any target
+- Handle all types of dependencies
+
+    - Build time providers (`DEPENDS`/`PROVIDES`)
+    - Runtime providers (`RDEPENDS*`/`RPROVIDES*`)
+    - Related to the above: deptask, rdeptask, recrdeptask flags
+    - Explicit task dependencies: depends flag
+
+- Add a subcommand which emits information about all dependencies in both
+  directions for any target
 - Add additional types of variable filtering for `show`
 
-    - filter out 'unused' variables (not used by any tasks for the recipe)
-    - variables with documentation ('doc' flag)
-    - variables with defined variable types ('type' flag)
-    - variables with default values (??=, aka 'defaultval' flag)
+    - Filter out 'unused' variables (not used by any tasks for the recipe)
+    - Potentially improve flexibility regarding dependency traversal (e.g.
+      show all dependencies rather than just function dependencies)
+
+    - Consider adding an argument to disable variable expansion. This adds
+      complexity but gives you output not unlike you would see in a config
+      file or recipe, which has a certain amount of value, and file paths in
+      particular are awfully unwieldy when expanded. A prototype of this is on
+      a branch ('unexpanded')
+    - Show variables with particular attributes / flags
+
+        - Variables with documentation ('doc' flag)
+        - Variables with defined variable types ('type' flag)
+        - Variables with default values (??=, aka 'defaultval' flag)
 
 - Add interactive mode
 
