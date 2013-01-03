@@ -28,6 +28,17 @@ Some Examples
     sqlite3
     attr
 
+
+    $ bb whatdepends -r attr core-image-minimal
+    Parsing recipes..done.
+    acl
+    libcap
+      avahi
+      libgcrypt
+        gtk+
+          libglade
+
+
     $ bb showdepends bash
     Parsing recipes..done.
     autoconf-native
@@ -43,9 +54,11 @@ Some Examples
     ncurses
     bison-native
 
+
     $ bb show -r bash FILE
     Parsing recipes..done.
     FILE="/scratch/mel7/bb/poky/meta/recipes-extended/bash/bash_4.2.bb"
+
 
     $ bb whatprovides bash
     Parsing recipes..done.
