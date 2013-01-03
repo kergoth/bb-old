@@ -183,4 +183,8 @@ if __name__ == '__main__':
     c = BitBakeCommands()
     c.logger.addHandler(console)
     c.logger.setLevel(logging.INFO)
+
+    if len(sys.argv) == 1:
+        c.parser.print_help()
+        sys.exit(2)
     c.parse_args(sys.argv[1:])
