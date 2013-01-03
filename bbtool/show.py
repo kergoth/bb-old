@@ -154,6 +154,9 @@ def variable_function_deps(data, variable, deps, seen):
 def dep_ordered_variables(data, variables, deps):
     seen = set()
     for variable in variables:
+        if variable in seen:
+            continue
+
         seen.add(variable)
         for dep in variable_function_deps(data, variable, deps, seen):
             yield dep
