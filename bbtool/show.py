@@ -142,7 +142,7 @@ def variable_function_deps(data, variable, deps, seen):
 
     for dep in variable_deps:
         if dep in seen:
-            return
+            continue
         seen.add(dep)
 
         if data.getVarFlag(dep, 'func'):
