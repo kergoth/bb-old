@@ -23,6 +23,8 @@ Code
 - Avoid use of `build_targets`, so commands like showdepends work against any
   target, not just `build_targets` (e.g. bb showdepends virtual/libc should
   work)
+- Restructure commands, move them out of 'bb'
+- Move bb.main into the python package
 
 Long term
 ---------
