@@ -52,7 +52,6 @@ def get_data(tinfoil, recipe=None):
 
 # TODO: enhance bb.data.emit* to function more flexibly, like these
 def escape_shell_value(value):
-    value = value.replace('$', '\$')
     value = value.replace('"', '\"')
     value = value.replace('`', '\`')
     return value
