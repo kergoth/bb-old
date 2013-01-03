@@ -5,10 +5,6 @@ General
   'whatdepends'
 - Add a subcommand which emits information about all dependencies, indirect
   and direct, runtime and build time, in both directions for any target
-- Add a subcommand to determine why a particular package/recipe got pulled
-  into a build for a specified target (the dependency commands can likely be
-  leveraged for this, but would use the specified target rather than world for
-  populating the taskdata)
 - Add additional types of variable filtering for `show`
 
     - filter out 'unused' variables (not used by any tasks for the recipe)
