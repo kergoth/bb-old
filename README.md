@@ -28,7 +28,6 @@ Some Examples
     sqlite3
     attr
 
-
     $ bb whatdepends -r attr core-image-minimal
     Parsing recipes..done.
     acl
@@ -37,7 +36,6 @@ Some Examples
       libgcrypt
         gtk+
           libglade
-
 
     $ bb showdepends bash
     Parsing recipes..done.
@@ -54,11 +52,12 @@ Some Examples
     ncurses
     bison-native
 
+    $ bb whatrprovides busybox-syslog
+    /scratch/mel7/bb/poky/meta/recipes-core/busybox/busybox_1.20.2.bb*
 
     $ bb show -r bash FILE
     Parsing recipes..done.
     FILE="/scratch/mel7/bb/poky/meta/recipes-extended/bash/bash_4.2.bb"
-
 
     $ bb whatprovides bash
     Parsing recipes..done.

@@ -91,7 +91,7 @@ class BitBakeCommands(Commands):
     logger = logging.getLogger('bb')
 
 
-    def prepare_taskdata(self, providers):
+    def prepare_taskdata(self, provided=None, rprovided=None):
         # Silence messages about missing/unbuildable, as we don't care
         bb.taskdata.logger.setLevel(logging.CRITICAL)
 
@@ -105,17 +105,22 @@ class BitBakeCommands(Commands):
 
         taskdata = bb.taskdata.TaskData(abort=False)
 
-        if 'world' in providers:
-            tinfoil.cooker.buildWorldTargetList()
-            providers.remove('world')
-            providers.extend(tinfoil.cooker.status.world_target)
+        if provided:
+            if 'world' in provided:
+                tinfoil.cooker.buildWorldTargetList()
+                provided.remove('world')
+                provided.extend(tinfoil.cooker.status.world_target)
 
-        if 'universe' in providers:
-            providers.remove('universe')
-            providers.extend(tinfoil.cooker.status.universe_target)
+            if 'universe' in provided:
+                provided.remove('universe')
+                provided.extend(tinfoil.cooker.status.universe_target)
 
-        for provider in providers:
-            taskdata.add_provider(localdata, tinfoil.cooker.status, provider)
+            for item in provided:
+                taskdata.add_item(localdata, tinfoil.cooker.status, item)
+
+        if rprovided:
+            for ritem in rprovided:
+                taskdata.add_rprovider(localdata, tinfoil.cooker.status, ritem)
 
         taskdata.add_unresolved(localdata, tinfoil.cooker.status)
 
@@ -200,6 +205,18 @@ class BitBakeCommands(Commands):
         first_provider = self.taskdata.build_targets[targetid][0]
         print(self.taskdata.fn_index[first_provider] + '*')
         for fnid in self.taskdata.build_targets[targetid][1:]:
+            print(self.taskdata.fn_index[fnid])
+
+    @arg('target')
+    def do_whatrprovides(self, args):
+        """Show what recipes provide the specified target"""
+
+        self.prepare_taskdata(rprovided=[args.target])
+
+        targetid = self.taskdata.getrun_id(args.target)
+        first_provider = self.taskdata.run_targets[targetid][0]
+        print(self.taskdata.fn_index[first_provider] + '*')
+        for fnid in self.taskdata.run_targets[targetid][1:]:
             print(self.taskdata.fn_index[fnid])
 
     @arg('command', help='show help for this subcommand', nargs='?')
