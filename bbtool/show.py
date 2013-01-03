@@ -117,19 +117,19 @@ def print_variable(data, variable):
 
     flags = data.getVarFlags(variable) or {}
     if flags.get('func'):
-        try:
-            value = bb.data.expand(unexpanded, data)
-        except BaseException:
-            logger.exception("Expansion of '%s' failed", variable)
-            return
-
         if flags.get('python'):
             # TODO: fix bitbake to show methodpool functions sanely like this
             if variable in bb.methodpool._parsed_fns:
-                print(value)
+                print(unexpanded)
             else:
-                print("python %s () {\n%s}\n" % (variable, value))
+                print("python %s () {\n%s}\n" % (variable, unexpanded))
         else:
+            try:
+                value = bb.data.expand(unexpanded, data)
+            except BaseException:
+                logger.exception("Expansion of '%s' failed", variable)
+                return
+
             print("%s () {\n%s}\n" % (variable, value))
     else:
         print(format_variable(data, variable, shell=True))
