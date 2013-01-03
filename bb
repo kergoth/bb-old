@@ -32,6 +32,14 @@ sys.path[0:0] = bitbake_paths
 import bb.msg
 
 
+class Terminate(BaseException):
+    pass
+
+
+def sigterm_exception(signum, stackframe):
+    raise Terminate()
+
+
 def arg(*args, **kw):
     def f(fn):
         if not hasattr(fn, 'args'):
@@ -174,7 +182,7 @@ class BitBakeCommands(Commands):
             self.subparsers._name_parser_map[args.command].print_help()
 
 
-if __name__ == '__main__':
+def main(arguments):
     log_format = bbtool.formatter.Formatter("%(levelname)s: %(message)s")
     if sys.stderr.isatty():
         log_format.enable_color()
@@ -185,7 +193,20 @@ if __name__ == '__main__':
     c.logger.addHandler(console)
     c.logger.setLevel(logging.INFO)
 
-    if len(sys.argv) == 1:
+    if not arguments:
         c.parser.print_help()
         sys.exit(2)
-    c.parse_args(sys.argv[1:])
+    c.parse_args(arguments)
+
+
+if __name__ == '__main__':
+    import signal
+    signal.signal(signal.SIGTERM, sigterm_exception)
+    try:
+        main(sys.argv[1:])
+    except KeyboardInterrupt:
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
+        os.kill(os.getpid(), signal.SIGINT)
+    except Terminate:
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
+        os.kill(os.getpid(), signal.SIGTERM)
