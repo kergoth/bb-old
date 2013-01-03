@@ -95,36 +95,46 @@ class BitBakeCommands(Commands):
         # Silence messages about missing/unbuildable, as we don't care
         bb.taskdata.logger.setLevel(logging.CRITICAL)
 
-        tinfoil = bbtool.tinfoil.Tinfoil(output=sys.stderr)
-        tinfoil.prepare()
+        self.tinfoil = bbtool.tinfoil.Tinfoil(output=sys.stderr)
+        self.tinfoil.prepare()
 
-        localdata = bb.data.createCopy(tinfoil.config_data)
-        localdata.finalize()
+        self.cooker = self.tinfoil.cooker
+        self.cache_data = self.tinfoil.cooker.status
+
+        self.localdata = bb.data.createCopy(self.tinfoil.config_data)
+        self.localdata.finalize()
         # TODO: why isn't expandKeys a method of DataSmart?
-        bb.data.expandKeys(localdata)
+        bb.data.expandKeys(self.localdata)
 
-        taskdata = bb.taskdata.TaskData(abort=False)
+        self.taskdata = bb.taskdata.TaskData(abort=False)
 
         if provided:
-            if 'world' in provided:
-                tinfoil.cooker.buildWorldTargetList()
-                provided.remove('world')
-                provided.extend(tinfoil.cooker.status.world_target)
-
-            if 'universe' in provided:
-                provided.remove('universe')
-                provided.extend(tinfoil.cooker.status.universe_target)
-
-            for item in provided:
-                taskdata.add_item(localdata, tinfoil.cooker.status, item)
+            self.add_provided(provided)
 
         if rprovided:
-            for ritem in rprovided:
-                taskdata.add_rprovider(localdata, tinfoil.cooker.status, ritem)
+            self.add_rprovided(provided)
 
-        taskdata.add_unresolved(localdata, tinfoil.cooker.status)
+    def add_rprovided(self, rprovided):
+        for item in rprovided:
+            self.taskdata.add_rprovider(self.localdata, self.cache_data, item)
 
-        self.tinfoil, self.taskdata, self.localdata = tinfoil, taskdata, localdata
+        self.taskdata.add_unresolved(self.localdata, self.cache_data)
+
+    def add_provided(self, provided):
+        if 'world' in provided:
+            if not self.cache_data.world_target:
+                self.cooker.buildWorldTargetList()
+            provided.remove('world')
+            provided.extend(self.cache_data.world_target)
+
+        if 'universe' in provided:
+            provided.remove('universe')
+            provided.extend(self.cache_data.universe_target)
+
+        for item in provided:
+            self.taskdata.add_provider(self.localdata, self.cache_data, item)
+
+        self.taskdata.add_unresolved(self.localdata, self.cache_data)
 
     def rec_get_dependees(self, targetid, depth=0):
         for dependee_fnid, dependee_id in self.get_dependees(targetid):
@@ -175,11 +185,10 @@ class BitBakeCommands(Commands):
         """Show what the specified target depends upon"""
 
         self.prepare_taskdata([args.target])
-
-        targetid = self.taskdata.getbuild_id(args.target)
-        fnid = self.taskdata.build_targets[targetid][0]
-        for dep in self.taskdata.depids[fnid]:
-            print(self.taskdata.build_names_index[dep])
+        fnid = self.taskdata.get_provider(args.target)[0]
+        fn = self.taskdata.fn_index[fnid]
+        for dep in self.cache_data.deps[fn]:
+            print(dep)
 
     @arg('target')
     def do_showprovides(self, args):
@@ -191,8 +200,7 @@ class BitBakeCommands(Commands):
         fnid = self.taskdata.build_targets[targetid][0]
         fn = self.taskdata.fn_index[fnid]
 
-        cache_data = self.tinfoil.cooker.status
-        for provide in sorted(cache_data.fn_provides[fn]):
+        for provide in sorted(self.cache_data.fn_provides[fn]):
             print(provide)
 
     @arg('target')
