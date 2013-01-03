@@ -22,7 +22,6 @@ Code
 - Avoid use of `build_targets`, so commands like showdepends work against any
   target, not just `build_targets` (e.g. bb showdepends virtual/libc should
   work)
-- Clean up the show command, consolidate common logic amongst the commands
 
 Long term
 ---------

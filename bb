@@ -15,8 +15,9 @@
 
 
 import argparse
-import bbcommands.formatter
-import bbcommands.show
+import bbtool.formatter
+import bbtool.show
+import bbtool.tinfoil
 import logging
 import sys
 
@@ -35,7 +36,7 @@ def arg(*args, **kw):
     def f(fn):
         if not hasattr(fn, 'args'):
             fn.args = []
-        fn.args.append((args, kw))
+        fn.args.insert(0, (args, kw))
         return fn
     return f
 
@@ -46,14 +47,26 @@ class Commands(object):
         self.parser = argparse.ArgumentParser(description=self.__doc__)
         self.subparsers = self.parser.add_subparsers()
         for command in self.commands:
-            parser = self.subparsers.add_parser(command.__name__[3:], description=command.__doc__)
+            if hasattr(command, 'help'):
+                help = command.help
+            else:
+                if command.__doc__ and '\n' not in command.__doc__:
+                    help = command.__doc__
+                else:
+                    help = None
+
+            parser = self.subparsers.add_parser(command.__name__[3:], description=command.__doc__, help=help)
             if hasattr(command, 'args'):
                 for args, kw in command.args:
                     parser.add_argument(*args, **kw)
             parser.set_defaults(func=command)
 
     def parse_args(self, args):
-        args = self.parser.parse_args(args)
+        try:
+            args = self.parser.parse_args(args)
+        except argparse.ArgumentError, exc:
+            print(exc)
+            raise
         args.func(args)
 
     def get_commands(self):
@@ -64,6 +77,37 @@ class Commands(object):
         return commands
 
 
+def prepare_taskdata(providers):
+    # Silence messages about missing/unbuildable, as we don't care
+    bb.taskdata.logger.setLevel(logging.CRITICAL)
+
+    tinfoil = bbtool.tinfoil.Tinfoil(output=sys.stderr)
+    tinfoil.prepare()
+
+    localdata = bb.data.createCopy(tinfoil.config_data)
+    localdata.finalize()
+    # TODO: why isn't expandKeys a method of DataSmart?
+    bb.data.expandKeys(localdata)
+
+    taskdata = bb.taskdata.TaskData(abort=False)
+
+    if 'world' in providers:
+        tinfoil.cooker.buildWorldTargetList()
+        providers.remove('world')
+        providers.extend(tinfoil.cooker.status.world_target)
+
+    if 'universe' in providers:
+        providers.remove('universe')
+        providers.extend(tinfoil.cooker.status.universe_target)
+
+    for provider in providers:
+        taskdata.add_provider(localdata, tinfoil.cooker.status, provider)
+
+    taskdata.add_unresolved(localdata, tinfoil.cooker.status)
+
+    return tinfoil, taskdata
+
+
 class BitBakeCommands(Commands):
     "Prototype subcommand-based bitbake UI"
 
@@ -72,37 +116,19 @@ class BitBakeCommands(Commands):
     @arg('-d', '--dependencies', action='store_true', help='also show dependent functions')
     @arg('-f', '--flags', action='store_true', help='also show flags')
     @arg('-r', '--recipe', help='operate against this recipe')
-    @arg('variables', nargs='*', help='variables to show')
+    @arg('variables', nargs='*', help='variables to show (default: all variables)')
     def do_show(self, args):
-        """Show bitbake metadata (global or recipe)
-
-        If no variables are specified, all will be shown."""
-        import bbcommands.show
-        bbcommands.show.show(args)
+        """Show bitbake metadata (global or recipe)"""
+        bbtool.show.show(args)
 
     @arg('target')
+    @arg('recipes', default=['universe'], nargs='*',
+         help='recipes to check for dependencies on target (default: universe)')
     def do_whatdepends(self, args):
         """Show what depends on the specified target"""
-        import bbcommands.tinfoil
 
-        # Silence messages about missing/unbuildable, as we don't care
-        bb.taskdata.logger.setLevel(logging.CRITICAL)
-
-        tinfoil = bbcommands.tinfoil.Tinfoil(output=sys.stderr)
-        tinfoil.prepare()
-
-        localdata = bb.data.createCopy(tinfoil.config_data)
-        localdata.finalize()
-        # TODO: why isn't expandKeys a method of DataSmart?
-        bb.data.expandKeys(localdata)
-
-        taskdata = bb.taskdata.TaskData(abort=False)
-        taskdata.add_provider(localdata, tinfoil.cooker.status, args.target)
-
-        tinfoil.cooker.buildWorldTargetList()
-        for target in tinfoil.cooker.status.world_target:
-            taskdata.add_provider(localdata, tinfoil.cooker.status, target)
-        taskdata.add_unresolved(localdata, tinfoil.cooker.status)
+        providers = list(args.recipes)
+        tinfoil, taskdata = prepare_taskdata(providers)
 
         targetid = taskdata.getbuild_id(args.target)
         fnid = taskdata.build_targets[targetid][0]
@@ -115,18 +141,9 @@ class BitBakeCommands(Commands):
     @arg('target')
     def do_showdepends(self, args):
         """Show what the specified target depends upon"""
-        import bbcommands.tinfoil
 
-        tinfoil = bbcommands.tinfoil.Tinfoil(output=sys.stderr)
-        tinfoil.prepare()
+        tinfoil, taskdata = prepare_taskdata([args.target])
 
-        localdata = bb.data.createCopy(tinfoil.config_data)
-        localdata.finalize()
-        # TODO: why isn't expandKeys a method of DataSmart?
-        bb.data.expandKeys(localdata)
-
-        taskdata = bb.taskdata.TaskData(abort=False)
-        taskdata.add_provider(localdata, tinfoil.cooker.status, args.target)
         targetid = taskdata.getbuild_id(args.target)
         fnid = taskdata.build_targets[targetid][0]
         for dep in taskdata.depids[fnid]:
@@ -135,38 +152,29 @@ class BitBakeCommands(Commands):
     @arg('target')
     def do_whatprovides(self, args):
         """Show what recipes provide the specified target"""
-        import bbcommands.tinfoil
 
-        # Silence messages about missing/unbuildable, as we don't care
-        bb.taskdata.logger.setLevel(logging.CRITICAL)
-
-        tinfoil = bbcommands.tinfoil.Tinfoil(output=sys.stderr)
-        tinfoil.prepare()
-
-        localdata = bb.data.createCopy(tinfoil.config_data)
-        localdata.finalize()
-        # TODO: why isn't expandKeys a method of DataSmart?
-        bb.data.expandKeys(localdata)
-
-        taskdata = bb.taskdata.TaskData(abort=False)
-        taskdata.add_provider(localdata, tinfoil.cooker.status, args.target)
+        tinfoil, taskdata = prepare_taskdata([args.target])
 
         targetid = taskdata.getbuild_id(args.target)
         first_provider = taskdata.build_targets[targetid][0]
-        print('*' + taskdata.fn_index[first_provider])
+        print(taskdata.fn_index[first_provider] + '*')
         for fnid in taskdata.build_targets[targetid][1:]:
-            print(' ' + taskdata.fn_index[fnid])
+            print(taskdata.fn_index[fnid])
 
-    @arg('command', help='show help for this subcommand')
+    @arg('command', help='show help for this subcommand', nargs='?')
     def do_help(self, args):
-        if args.command not in self.subparsers._name_parser_map:
+        """Show overall help, or help for a specific subcommand"""
+
+        if not args.command:
+            self.parser.print_help()
+        elif args.command not in self.subparsers._name_parser_map:
             self.parser.exit("Invalid command '%s'" % args.command)
         else:
             self.subparsers._name_parser_map[args.command].print_help()
 
 
 if __name__ == '__main__':
-    log_format = bbcommands.formatter.Formatter("%(levelname)s: %(message)s")
+    log_format = bbtool.formatter.Formatter("%(levelname)s: %(message)s")
     if sys.stderr.isatty():
         log_format.enable_color()
     console = logging.StreamHandler(sys.stderr)

@@ -11,7 +11,7 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-import bbcommands.formatter
+import bbtool.formatter
 import bb.providers
 import bb.tinfoil
 import logging
@@ -29,7 +29,7 @@ class Tinfoil(bb.tinfoil.Tinfoil):
         # Set up logging
         self.logger = logging.getLogger('BitBake')
         console = logging.StreamHandler(output)
-        format = bbcommands.formatter.Formatter("%(levelname)s: %(message)s", output=output)
+        format = bbtool.formatter.Formatter("%(levelname)s: %(message)s", output=output)
         if output.isatty():
             format.enable_color()
         bb.msg.addDefaultlogFilter(console)

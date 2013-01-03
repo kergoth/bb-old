@@ -16,8 +16,8 @@ import optparse
 import os
 import sys
 import warnings
-import bbcommands.tinfoil
-import bbcommands.formatter
+import bbtool.tinfoil
+import bbtool.formatter
 import bb
 import bb.cache
 import bb.codeparser
@@ -183,7 +183,7 @@ def sorted_variables(data, variables=None, show_deps=True):
     return variables
 
 def show(args):
-    log_format = bbcommands.formatter.Formatter("%(levelname)s: %(message)s")
+    log_format = bbtool.formatter.Formatter("%(levelname)s: %(message)s")
     if sys.stderr.isatty():
         log_format.enable_color()
     console = logging.StreamHandler(sys.stderr)
@@ -191,7 +191,7 @@ def show(args):
     console.setLevel(logging.INFO)
     logger.addHandler(console)
 
-    tinfoil = bbcommands.tinfoil.Tinfoil(output=sys.stderr)
+    tinfoil = bbtool.tinfoil.Tinfoil(output=sys.stderr)
     tinfoil.prepare(config_only=True)
 
     ignore = tinfoil.config_data.getVar("ASSUME_PROVIDED", True) or ""
