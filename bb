@@ -112,7 +112,7 @@ class BitBakeCommands(Commands):
             self.add_provided(provided)
 
         if rprovided:
-            self.add_rprovided(provided)
+            self.add_rprovided(rprovided)
 
     def add_rprovided(self, rprovided):
         for item in rprovided:
