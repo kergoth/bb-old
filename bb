@@ -85,43 +85,59 @@ class Commands(object):
         return commands
 
 
-def prepare_taskdata(providers):
-    # Silence messages about missing/unbuildable, as we don't care
-    bb.taskdata.logger.setLevel(logging.CRITICAL)
-
-    tinfoil = bbtool.tinfoil.Tinfoil(output=sys.stderr)
-    tinfoil.prepare()
-
-    localdata = bb.data.createCopy(tinfoil.config_data)
-    localdata.finalize()
-    # TODO: why isn't expandKeys a method of DataSmart?
-    bb.data.expandKeys(localdata)
-
-    taskdata = bb.taskdata.TaskData(abort=False)
-
-    if 'world' in providers:
-        tinfoil.cooker.buildWorldTargetList()
-        providers.remove('world')
-        providers.extend(tinfoil.cooker.status.world_target)
-
-    if 'universe' in providers:
-        providers.remove('universe')
-        providers.extend(tinfoil.cooker.status.universe_target)
-
-    for provider in providers:
-        taskdata.add_provider(localdata, tinfoil.cooker.status, provider)
-
-    taskdata.add_unresolved(localdata, tinfoil.cooker.status)
-
-    return tinfoil, taskdata
-
-
 class BitBakeCommands(Commands):
     "Prototype subcommand-based bitbake UI"
 
     logger = logging.getLogger('bb')
 
-    @arg('-d', '--dependencies', action='store_true', help='also show functions the vars depend on')
+
+    def prepare_taskdata(self, providers):
+        # Silence messages about missing/unbuildable, as we don't care
+        bb.taskdata.logger.setLevel(logging.CRITICAL)
+
+        tinfoil = bbtool.tinfoil.Tinfoil(output=sys.stderr)
+        tinfoil.prepare()
+
+        localdata = bb.data.createCopy(tinfoil.config_data)
+        localdata.finalize()
+        # TODO: why isn't expandKeys a method of DataSmart?
+        bb.data.expandKeys(localdata)
+
+        taskdata = bb.taskdata.TaskData(abort=False)
+
+        if 'world' in providers:
+            tinfoil.cooker.buildWorldTargetList()
+            providers.remove('world')
+            providers.extend(tinfoil.cooker.status.world_target)
+
+        if 'universe' in providers:
+            providers.remove('universe')
+            providers.extend(tinfoil.cooker.status.universe_target)
+
+        for provider in providers:
+            taskdata.add_provider(localdata, tinfoil.cooker.status, provider)
+
+        taskdata.add_unresolved(localdata, tinfoil.cooker.status)
+
+        self.tinfoil, self.taskdata, self.localdata = tinfoil, taskdata, localdata
+
+    def rec_get_dependees(self, targetid, depth=0):
+        for dependee_fnid, dependee_id in self.get_dependees(targetid):
+            yield dependee_id, depth
+
+            for _id, _depth in self.rec_get_dependees(dependee_id, depth+1):
+                yield _id, _depth
+
+    def get_dependees(self, targetid):
+        fnid = self.taskdata.build_targets[targetid][0]
+        dep_fnids = self.taskdata.get_dependees(targetid)
+        for dep_fnid in dep_fnids:
+            for target in self.taskdata.build_targets:
+                if dep_fnid in self.taskdata.build_targets[target]:
+                    yield dep_fnid, target
+
+    @arg('-d', '--dependencies', action='store_true',
+         help='also show functions the vars depend on')
     @arg('-f', '--flags', action='store_true', help='also show flags')
     @arg('-r', '--recipe', help='operate against this recipe')
     @arg('variables', nargs='*', help='variables to show (default: all variables)')
@@ -129,6 +145,8 @@ class BitBakeCommands(Commands):
         """Show bitbake metadata (global or recipe)"""
         bbtool.show.show(args)
 
+    @arg('-r', '--recursive', action='store_true',
+         help='operate recursively, with indent reflecting depth')
     @arg('target')
     @arg('recipes', default=['universe'], nargs='*',
          help='recipes to check for dependencies on target (default: universe)')
@@ -137,38 +155,38 @@ class BitBakeCommands(Commands):
 
         providers = list(args.recipes)
         providers.append(args.target)
-        tinfoil, taskdata = prepare_taskdata(providers)
+        self.prepare_taskdata(providers)
 
-        targetid = taskdata.getbuild_id(args.target)
-        fnid = taskdata.build_targets[targetid][0]
-        dep_fnids = taskdata.get_dependees(targetid)
-        for dep_fnid in dep_fnids:
-            for target in taskdata.build_targets:
-                if dep_fnid in taskdata.build_targets[target]:
-                    print(taskdata.build_names_index[target])
+        targetid = self.taskdata.getbuild_id(args.target)
+        if args.recursive:
+            for dep_id, depth in self.rec_get_dependees(targetid):
+                print('  '*depth + self.taskdata.build_names_index[dep_id])
+        else:
+            for dep_fnid, dep_id in self.get_dependees(targetid):
+                print(self.taskdata.build_names_index[dep_id])
 
     @arg('target')
     def do_showdepends(self, args):
         """Show what the specified target depends upon"""
 
-        tinfoil, taskdata = prepare_taskdata([args.target])
+        self.prepare_taskdata([args.target])
 
-        targetid = taskdata.getbuild_id(args.target)
-        fnid = taskdata.build_targets[targetid][0]
-        for dep in taskdata.depids[fnid]:
-            print(taskdata.build_names_index[dep])
+        targetid = self.taskdata.getbuild_id(args.target)
+        fnid = self.taskdata.build_targets[targetid][0]
+        for dep in self.taskdata.depids[fnid]:
+            print(self.taskdata.build_names_index[dep])
 
     @arg('target')
     def do_showprovides(self, args):
         """Show what the specified target provides"""
 
-        tinfoil, taskdata = prepare_taskdata([args.target])
+        self.prepare_taskdata([args.target])
 
-        targetid = taskdata.getbuild_id(args.target)
-        fnid = taskdata.build_targets[targetid][0]
-        fn = taskdata.fn_index[fnid]
+        targetid = self.taskdata.getbuild_id(args.target)
+        fnid = self.taskdata.build_targets[targetid][0]
+        fn = self.taskdata.fn_index[fnid]
 
-        cache_data = tinfoil.cooker.status
+        cache_data = self.tinfoil.cooker.status
         for provide in sorted(cache_data.fn_provides[fn]):
             print(provide)
 
@@ -176,13 +194,13 @@ class BitBakeCommands(Commands):
     def do_whatprovides(self, args):
         """Show what recipes provide the specified target"""
 
-        tinfoil, taskdata = prepare_taskdata([args.target])
+        self.prepare_taskdata([args.target])
 
-        targetid = taskdata.getbuild_id(args.target)
-        first_provider = taskdata.build_targets[targetid][0]
-        print(taskdata.fn_index[first_provider] + '*')
-        for fnid in taskdata.build_targets[targetid][1:]:
-            print(taskdata.fn_index[fnid])
+        targetid = self.taskdata.getbuild_id(args.target)
+        first_provider = self.taskdata.build_targets[targetid][0]
+        print(self.taskdata.fn_index[first_provider] + '*')
+        for fnid in self.taskdata.build_targets[targetid][1:]:
+            print(self.taskdata.fn_index[fnid])
 
     @arg('command', help='show help for this subcommand', nargs='?')
     def do_help(self, args):
