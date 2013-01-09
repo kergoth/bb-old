@@ -92,21 +92,22 @@ class BitBakeCommands(Commands):
 
 
     def prepare_taskdata(self, provided=None, rprovided=None):
-        # Silence messages about missing/unbuildable, as we don't care
-        bb.taskdata.logger.setLevel(logging.CRITICAL)
+        if not hasattr(self, 'tinfoil'):
+            # Silence messages about missing/unbuildable, as we don't care
+            bb.taskdata.logger.setLevel(logging.CRITICAL)
 
-        self.tinfoil = bbtool.tinfoil.Tinfoil(output=sys.stderr)
-        self.tinfoil.prepare()
+            self.tinfoil = bbtool.tinfoil.Tinfoil(output=sys.stderr)
+            self.tinfoil.prepare()
 
-        self.cooker = self.tinfoil.cooker
-        self.cache_data = self.tinfoil.cooker.status
+            self.cooker = self.tinfoil.cooker
+            self.cache_data = self.tinfoil.cooker.status
 
-        self.localdata = bb.data.createCopy(self.tinfoil.config_data)
-        self.localdata.finalize()
-        # TODO: why isn't expandKeys a method of DataSmart?
-        bb.data.expandKeys(self.localdata)
+            self.localdata = bb.data.createCopy(self.tinfoil.config_data)
+            self.localdata.finalize()
+            # TODO: why isn't expandKeys a method of DataSmart?
+            bb.data.expandKeys(self.localdata)
 
-        self.taskdata = bb.taskdata.TaskData(abort=False)
+            self.taskdata = bb.taskdata.TaskData(abort=False)
 
         if provided:
             self.add_provided(provided)
