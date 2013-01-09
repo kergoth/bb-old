@@ -20,6 +20,7 @@ import bbtool.show
 import bbtool.tinfoil
 import logging
 import sys
+from collections import defaultdict
 
 PATH = os.getenv('PATH').split(':')
 bitbake_paths = [os.path.join(path, '..', 'lib')
@@ -160,6 +161,114 @@ class BitBakeCommands(Commands):
     def do_show(self, args):
         """Show bitbake metadata (global or recipe)"""
         bbtool.show.show(args)
+
+    def pn_preferred_fnid(self, pn):
+        for fnid in self.taskdata.get_provider(pn):
+            fn = self.taskdata.fn_index[fnid]
+            if fn in self.cache_data.pkg_pn[pn]:
+                break
+
+        return fnid
+
+    def get_buildid(self, target):
+        if not self.taskdata.have_build_target(target):
+            reasons = self.taskdata.get_reasons(target)
+            if reasons:
+                self.logger.error("No buildable '%s' recipe found:\n%s", target, "\n".join(reasons))
+            else:
+                self.logger.error("No '%s' recipe found", target)
+            return
+        else:
+            return self.taskdata.getbuild_id(target)
+
+    def get_recipe_dependencies(self, fnid):
+        print("Build dependencies (DEPENDS): %s" % ', '.join(self.cache_data.deps[fn]))
+        print("Runtime dependencies (RDEPENDS*):")
+        packages = list(self.cache_data.rundeps[fn].keys())
+        for package, rdepends in self.cache_data.rundeps[fn].iteritems():
+            rdepends = filter(lambda d: d not in packages, rdepends)
+            if rdepends:
+                print("%s: %s" % (package, ', '.join(rdepends)))
+        # return 'DEPENDS', depend_fnid
+        # return 'RDEPENDS', rdepend_fnid
+        # return 'task-depends', tdepend_fnid
+
+    def get_recipe_reverse_dependencies(self, fnid):
+        pass
+        # return 'DEPENDS', depend_fnid
+        # return 'RDEPENDS', rdepend_fnid
+        # return 'task-depends', tdepend_fnid, tdepend_id
+
+    @arg('recipe')
+    def do_dependinfo(self, args):
+        self.prepare_taskdata([args.recipe])
+
+        targetid = self.get_buildid(args.recipe)
+        if targetid is None:
+            return 1
+
+        fnid = self.pn_preferred_fnid(args.recipe)
+        fn = self.taskdata.fn_index[fnid]
+
+        print("Build dependencies (DEPENDS): %s" % ', '.join(self.cache_data.deps[fn]))
+
+        all_rdepends = []
+        packages = list(self.cache_data.rundeps[fn].keys())
+        for package, rdepends in self.cache_data.rundeps[fn].iteritems():
+            rdepends = filter(lambda d: d not in packages, rdepends)
+            if rdepends:
+                all_rdepends.append((package, rdepends))
+
+        if all_rdepends:
+            print("Runtime dependencies (RDEPENDS*):")
+            for package, rdepends in all_rdepends:
+                print("  %s: %s" % (package, ', '.join(rdepends)))
+
+        all_rrecommends = []
+        packages = list(self.cache_data.runrecs[fn].keys())
+        for package, rrecommends in self.cache_data.runrecs[fn].iteritems():
+            rrecommends = filter(lambda d: d not in packages, rrecommends)
+            if rrecommends:
+                all_rrecommends.append((package, rrecommends))
+
+        if all_rdepends:
+            print("Runtime recommendations (RRECOMMENDS*):")
+            for package, rrecommends in all_rrecommends:
+                print("  %s: %s" % (package, ', '.join(rrecommends)))
+
+        task_deps = self.cache_data.task_deps[fn]
+        noexecs = task_deps.get('noexec', [])
+        tdepends = task_deps.get('depends')
+        if tdepends:
+            depends_task_based = defaultdict(set)
+            for task, deps in tdepends.iteritems():
+                if task in noexecs:
+                    continue
+                for dep in deps.split():
+                    recipe, deptask = dep.split(":")
+                    depends_task_based[task].add((recipe, deptask))
+
+            print("Build dependencies from tasks:")
+            for task, taskdeps in depends_task_based.iteritems():
+                print("  %s:" % task)
+                for recipe, taskdep in taskdeps:
+                    print("    %s (%s)" % (recipe, taskdep))
+
+        trdepends = task_deps.get('rdepends')
+        if trdepends:
+            rdepends_task_based = defaultdict(set)
+            for task, deps in trdepends.iteritems():
+                if task in noexecs:
+                    continue
+                for dep in deps.split():
+                    recipe, deptask = dep.split(":")
+                    rdepends_task_based[task].add((recipe, deptask))
+
+            print("Runtime dependencies from tasks:")
+            for task, taskdeps in rdepends_task_based.iteritems():
+                print("  %s:" % task)
+                for recipe, taskdep in taskdeps:
+                    print("    %s (%s)" % (recipe, taskdep))
 
     @arg('-r', '--recursive', action='store_true',
          help='operate recursively, with indent reflecting depth')
