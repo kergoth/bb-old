@@ -6,13 +6,7 @@ Experimentation with a subcommand-based bitbake UI (initially just inspection to
 Known Issues
 ------------
 
-- The dependency commands currently only show DEPENDS/PROVIDES dependencies,
-  not runtime or explicit task dependencies. This will be addressed in the
-  future. See TODO.md for details.
-- The dependency commands currently use the raw stored provider information,
-  rather than mapping to/from provider and pn. As a result, 'bb whatdepends
-  eglibc' will only show recipes that depend directly upon eglibc, not recipes
-  which depend upon virtual/libc, at this time.
+- Provider and pn aren't always correctly mapped back and forth
 
 
 Some Examples
