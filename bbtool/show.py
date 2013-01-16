@@ -44,7 +44,7 @@ def get_data(tinfoil, recipe=None):
                 logger.error("No '%s' recipe found", recipe)
             return
         else:
-            recipeid = taskdata.getbuild_id(recipe)
+            targetid = taskdata.getbuild_id(recipe)
         fnid = taskdata.build_targets[targetid][0]
         fn = taskdata.fn_index[fnid]
 
