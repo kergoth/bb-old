@@ -36,7 +36,15 @@ def get_data(tinfoil, recipe=None):
         taskdata = bb.taskdata.TaskData(abort=False)
         taskdata.add_provider(localdata, tinfoil.cooker.status, recipe)
 
-        targetid = taskdata.getbuild_id(recipe)
+        if not taskdata.have_build_target(recipe):
+            reasons = taskdata.get_reasons(recipe)
+            if reasons:
+                logger.error("No buildable '%s' recipe found:\n%s", recipe, "\n".join(reasons))
+            else:
+                logger.error("No '%s' recipe found", recipe)
+            return
+        else:
+            recipeid = taskdata.getbuild_id(recipe)
         fnid = taskdata.build_targets[targetid][0]
         fn = taskdata.fn_index[fnid]
 
@@ -217,6 +225,8 @@ def show(args):
         data = get_data(tinfoil, args.recipe)
     else:
         data = get_data(tinfoil)
+    if not data:
+        return 1
 
     variables = sorted_variables(data, args.variables, args.dependencies)
     for variable in variables:
