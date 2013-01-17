@@ -8,8 +8,44 @@ General
     - Related to the above: deptask, rdeptask, recrdeptask flags
     - Explicit task dependencies: depends flag
 
-- Add a subcommand which emits information about all dependencies in both
-  directions for any target
+- Subcommands / capabilities to add
+
+    - `showrdepends`
+    - `showrprovides` / `showpackages`
+    - `whatrdepends`
+    - reverse dependinfo (possibly in dependinfo itself)
+    - interactive mode
+
+        - single up-front recipe parse step
+        - add reparse subcommand
+
+    - `edit` (ideally, prompt for the recipe itself or any of the bbappends)
+    - `bake` - do a build by spawning off a bitbake UI
+    - Convenience subcommands corresponding to tasks
+
+        - `clean`
+        - `cleansstate`
+        - `cleanall`
+        - `devshell`
+        - `menuconfig`
+
+    - the bitbake-layers capabilities
+
+- Ensure that all output of all commands is (or can be) machine parseable
+
+    - Potentially support emission of structured data. E.g. `bb dependinfo
+      TARGET` could emit JSON or colon separated information about all the
+      dependencies in both directions for it, rather than the more specific,
+      single type of data shown by showdepends/whatdepends/etc
+
+- Ensure that we properly traverse provides for whatdepends
+
+    - E.g. show deps on `eglibc` for `bb whatdepends virtual/libc`, and vice
+      versa
+
+- Support showing additional information after builds. Potentially leverage
+  buildstats, the license manifests, buildhistory, pkgdata, etc
+
 - Add additional types of variable filtering for `show`
 
     - Filter out 'unused' variables (not used by any tasks for the recipe)
@@ -27,10 +63,6 @@ General
         - Variables with defined variable types ('type' flag)
         - Variables with default values (??=, aka 'defaultval' flag)
 
-- Add interactive mode
-
-    - single up-front recipe parse step
-    - add reparse subcommand
 
 Code
 ----
@@ -41,11 +73,10 @@ Code
 Long term
 ---------
 
-- Add a `bake` command, to do a build by spawning off a bitbake UI
-
 Considering
 -----------
 
+- Wildcards for `show` via fnmatch
 - target vs pn arguments. In some cases, the user may be expecting that their
   input be interpreted more directly, as a recipe name, rather than as
   a target. For example, it could be unintuitive that 'bb showprovides eglibc'
@@ -57,15 +88,6 @@ Considering
       interpreted
     - Add messages, possibly verbose/debug ones, which indicate how the input
       is mapped to an actual recipe file, or what recipe file is being used
-
-- Wildcards for `show` via fnmatch
-- Shift bitbake-layers into a subcommand
-- Support emission of structured data. E.g. `bb dependsinfo TARGET` could emit
-  JSON or colon separated information about all the dependencies in both
-  directions for it, rather than the more specific, single type of data shown
-  by showdepends/whatdepends/etc
-- Support showing additional information after builds. Potentially leverage
-  buildstats, the license manifests, buildhistory, pkgdata, etc
 
 - Show how a variable got defined to what it is (to do this, we need Peter
   Seebach's variable tracking patches, or we need to extract this information
