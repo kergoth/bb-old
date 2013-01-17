@@ -30,6 +30,23 @@ Some Examples
       libgcrypt
         gtk+
           libglade
+          
+    $ bb dependinfo bash
+    Parsing recipes..done.
+    Build dependencies (DEPENDS): autoconf-native, automake-native, libtool-native, libtool-cross, gnu-config-native, virtual/gettext, gettext-native, virtual/mips-linux-gnu-gcc, virtual/mips-linux-gnu-compilerlibs, virtual/libc, ncurses, bison-native
+    Build dependencies from tasks:
+      do_patch:
+        quilt-native (do_populate_sysroot)
+      do_install:
+        virtual/fakeroot-native (do_populate_sysroot)
+      do_package:
+        file-native (do_populate_sysroot)
+        prelink-native (do_populate_sysroot)
+        virtual/fakeroot-native (do_populate_sysroot)
+        rpm-native (do_populate_sysroot)
+      do_package_write_ipk:
+        opkg-utils-native (do_populate_sysroot)
+        virtual/fakeroot-native (do_populate_sysroot)
 
     $ bb showdepends bash
     Parsing recipes..done.
